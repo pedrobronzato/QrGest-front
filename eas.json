@@ -1,0 +1,17 @@
+{
+  "cli": [object Object]   version: >= 50.91  },
+build[object Object]   development": {
+      developmentClient": true,
+     distribution": internal"
+    },
+    preview": {
+     distribution":internal,  ios": {
+        simulator": true
+      }
+    },
+    production":[object Object]}
+  },
+ submit[object Object]
+    production": {}
+  }
+} 

@@ -1,19 +1,34 @@
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function BlurTabBarBackground() {
+const NAVBAR_GRADIENT_COLORS = ['#005DFF', '#00D26A'] as const;
+
+export default function GradientTabBarBackground() {
   return (
-    <BlurView
-      // System chrome material automatically adapts to the system's theme
-      // and matches the native tab bar appearance on iOS.
-      tint="systemChromeMaterial"
-      intensity={100}
-      style={StyleSheet.absoluteFill}
+    <LinearGradient
+      colors={NAVBAR_GRADIENT_COLORS}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={StyleSheet.absoluteFillObject}
     />
   );
 }
 
 export function useBottomTabOverflow() {
-  return useBottomTabBarHeight();
+  const insets = useSafeAreaInsets();
+
+  try {
+    return useBottomTabBarHeight();
+  } catch (error) {
+    if (__DEV__) {
+      console.warn(
+        'useBottomTabOverflow: não foi possível obter a altura da tab bar. Retornando o inset inferior como fallback.',
+        error
+      );
+    }
+
+    return insets.bottom;
+  }
 }

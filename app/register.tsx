@@ -120,6 +120,11 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
   );
 };
 
+const ACCOUNT_TYPE_OPTIONS: SelectOption[] = [
+  { id: 'admin', name: 'Administrador' },
+  { id: 'tecnico', name: 'Técnico' },
+];
+
 const TECHNICIAN_CATEGORIES = [
   { id: 'eletricista', name: 'Eletricista' },
   { id: 'encanador', name: 'Encanador' },
@@ -141,6 +146,7 @@ export default function RegisterScreen() {
   const [category, setCategory] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<'admin' | 'tecnico' | ''>('');
   const [loading, setLoading] = useState(false);
   const [nameError, setNameError] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -148,6 +154,7 @@ export default function RegisterScreen() {
   const [categoryError, setCategoryError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [roleError, setRoleError] = useState('');
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -172,12 +179,18 @@ export default function RegisterScreen() {
   };
 
   const handleRegister = async () => {
+    setRoleError('');
     setNameError('');
     setEmailError('');
     setPhoneError('');
     setCategoryError('');
     setPasswordError('');
     setConfirmPasswordError('');
+
+    if (!role) {
+      setRoleError('Tipo de conta é obrigatório');
+      return;
+    }
 
     if (name.trim() === '') {
       setNameError('Nome é obrigatório');
@@ -209,9 +222,13 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (category.trim() === '') {
-      setCategoryError('Categoria é obrigatória');
-      return;
+    const selectedRole = role as 'admin' | 'tecnico';
+
+    if (selectedRole === 'tecnico') {
+      if (category.trim() === '') {
+        setCategoryError('Categoria é obrigatória');
+        return;
+      }
     }
 
     if (password.trim() === '') {
@@ -238,22 +255,25 @@ export default function RegisterScreen() {
 
     try {
       const cleanPhone = phone.replace(/\D/g, '');
-      const result = await registerUser(email, password, name, 'tecnico', cleanPhone, category);
+      const categoryToSend = selectedRole === 'tecnico' ? category : '';
+      const result = await registerUser(email, password, name, selectedRole, cleanPhone, categoryToSend);
       console.log(result, 'result');
       
       if (result.success) {
-        Alert.alert(
-          'Sucesso', 
-          'Conta criada com sucesso! Você já está logado.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                router.replace('/(tabs)');
+        setTimeout(() => {
+          Alert.alert(
+            'Sucesso', 
+            'Conta criada com sucesso! Carregando seus dados...',
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  router.replace('/(tabs)');
+                }
               }
-            }
-          ]
-        );
+            ]
+          );
+        }, 1500);
       } else {
         Alert.alert('Erro', result.error || 'Erro ao criar conta');
       }
@@ -302,196 +322,237 @@ export default function RegisterScreen() {
               </VStack>
               
               <VStack space="md">
-                <FormControl isInvalid={!!nameError} isDisabled={loading}>
+                <FormControl isInvalid={!!roleError} isDisabled={loading}>
                   <FormControlLabel>
-                    <FormControlLabelText>Nome</FormControlLabelText>
-                  </FormControlLabel>
-                  <Input>
-                    <InputField
-                      type="text"
-                      placeholder="Digite seu nome"
-                      value={name}
-                      onChangeText={(text) => {
-                        setName(text);
-                        setNameError('');
-                      }}
-                      autoCapitalize="words"
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                    />
-                  </Input>
-                  {nameError && (
-                    <FormControlError>
-                      <FormControlErrorIcon as={AlertCircleIcon} />
-                      <FormControlErrorText>
-                        {nameError}
-                      </FormControlErrorText>
-                    </FormControlError>
-                  )}
-                </FormControl>
-
-                <FormControl isInvalid={!!emailError} isDisabled={loading}>
-                  <FormControlLabel>
-                    <FormControlLabelText>Email</FormControlLabelText>
-                  </FormControlLabel>
-                  <Input>
-                    <InputField
-                      type="text"
-                      placeholder="Digite seu email"
-                      value={email}
-                      onChangeText={(text) => {
-                        setEmail(text);
-                        setEmailError('');
-                      }}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                    />
-                  </Input>
-                  {emailError && (
-                    <FormControlError>
-                      <FormControlErrorIcon as={AlertCircleIcon} />
-                      <FormControlErrorText>
-                        {emailError}
-                      </FormControlErrorText>
-                    </FormControlError>
-                  )}
-                </FormControl>
-
-                <FormControl isInvalid={!!phoneError} isDisabled={loading}>
-                  <FormControlLabel>
-                    <FormControlLabelText>Telefone</FormControlLabelText>
-                  </FormControlLabel>
-                  <Input>
-                    <InputField
-                      type="text"
-                      placeholder="Digite seu telefone (com DDD)"
-                      value={phone}
-                      onChangeText={(text) => {
-                        const formatted = formatPhone(text);
-                        setPhone(formatted);
-                        setPhoneError('');
-                      }}
-                      keyboardType="phone-pad"
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                      maxLength={15}
-                    />
-                  </Input>
-                  {phoneError && (
-                    <FormControlError>
-                      <FormControlErrorIcon as={AlertCircleIcon} />
-                      <FormControlErrorText>
-                        {phoneError}
-                      </FormControlErrorText>
-                    </FormControlError>
-                  )}
-                </FormControl>
-
-                <FormControl isInvalid={!!categoryError} isDisabled={loading}>
-                  <FormControlLabel>
-                    <FormControlLabelText>Categoria</FormControlLabelText>
+                    <FormControlLabelText>Tipo de conta</FormControlLabelText>
                   </FormControlLabel>
                   <CustomSelect
-                    placeholder="Selecione uma categoria"
-                    options={TECHNICIAN_CATEGORIES}
-                    selectedValue={category}
+                    placeholder="Selecione o tipo de conta"
+                    options={ACCOUNT_TYPE_OPTIONS}
+                    selectedValue={role}
                     onValueChange={(value) => {
-                      setCategory(value);
-                      setCategoryError('');
+                      const newRole = (value ?? '') as 'admin' | 'tecnico' | '';
+                      setRole(newRole);
+                      setRoleError('');
+                      if (newRole === 'admin') {
+                        setCategory('');
+                        setCategoryError('');
+                      }
                     }}
-                    isInvalid={!!categoryError}
+                    isInvalid={!!roleError}
                   />
-                  {categoryError && (
+                  {roleError && (
                     <FormControlError>
                       <FormControlErrorIcon as={AlertCircleIcon} />
                       <FormControlErrorText>
-                        {categoryError}
+                        {roleError}
                       </FormControlErrorText>
                     </FormControlError>
                   )}
                 </FormControl>
 
-                <FormControl isInvalid={!!passwordError} isDisabled={loading}>
-                  <FormControlLabel>
-                    <FormControlLabelText>Senha</FormControlLabelText>
-                  </FormControlLabel>
-                  <Input>
-                    <InputField
-                      type="password"
-                      placeholder="Digite sua senha"
-                      value={password}
-                      onChangeText={(text) => {
-                        setPassword(text);
-                        setPasswordError('');
-                      }}
-                      secureTextEntry
-                      returnKeyType="next"
-                      blurOnSubmit={false}
-                    />
-                  </Input>
-                  {passwordError && (
-                    <FormControlError>
-                      <FormControlErrorIcon as={AlertCircleIcon} />
-                      <FormControlErrorText>
-                        {passwordError}
-                      </FormControlErrorText>
-                    </FormControlError>
-                  )}
-                </FormControl>
+                {role ? (
+                  <>
+                    <FormControl isInvalid={!!nameError} isDisabled={loading}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Nome</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          type="text"
+                          placeholder="Digite seu nome"
+                          value={name}
+                          onChangeText={(text) => {
+                            setName(text);
+                            setNameError('');
+                          }}
+                          autoCapitalize="words"
+                          returnKeyType="next"
+                          blurOnSubmit={false}
+                        />
+                      </Input>
+                      {nameError && (
+                        <FormControlError>
+                          <FormControlErrorIcon as={AlertCircleIcon} />
+                          <FormControlErrorText>
+                            {nameError}
+                          </FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
 
-                <FormControl isInvalid={!!confirmPasswordError} isDisabled={loading}>
-                  <FormControlLabel>
-                    <FormControlLabelText>Confirmar Senha</FormControlLabelText>
-                  </FormControlLabel>
-                  <Input>
-                    <InputField
-                      type="password"
-                      placeholder="Confirme sua senha"
-                      value={confirmPassword}
-                      onChangeText={(text) => {
-                        setConfirmPassword(text);
-                        setConfirmPasswordError('');
-                      }}
-                      secureTextEntry
-                      returnKeyType="done"
-                      blurOnSubmit={true}
-                    />
-                  </Input>
-                  {confirmPasswordError && (
-                    <FormControlError>
-                      <FormControlErrorIcon as={AlertCircleIcon} />
-                      <FormControlErrorText>
-                        {confirmPasswordError}
-                      </FormControlErrorText>
-                    </FormControlError>
-                  )}
-                </FormControl>
-              </VStack>
+                    <FormControl isInvalid={!!emailError} isDisabled={loading}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Email</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          type="text"
+                          placeholder="Digite seu email"
+                          value={email}
+                          onChangeText={(text) => {
+                            setEmail(text);
+                            setEmailError('');
+                          }}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          returnKeyType="next"
+                          blurOnSubmit={false}
+                        />
+                      </Input>
+                      {emailError && (
+                        <FormControlError>
+                          <FormControlErrorIcon as={AlertCircleIcon} />
+                          <FormControlErrorText>
+                            {emailError}
+                          </FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
 
-              <VStack space="md" className="pt-6">
-                <Button
-                  size="lg"
-                  onPress={handleRegister}
-                  disabled={loading}
-                  className="bg-success-600"
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <ButtonText className="text-white font-semibold">
-                      Criar Conta
-                    </ButtonText>
-                  )}
-                </Button>
+                    <FormControl isInvalid={!!phoneError} isDisabled={loading}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Telefone</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          type="text"
+                          placeholder="Digite seu telefone (com DDD)"
+                          value={phone}
+                          onChangeText={(text) => {
+                            const formatted = formatPhone(text);
+                            setPhone(formatted);
+                            setPhoneError('');
+                          }}
+                          keyboardType="phone-pad"
+                          returnKeyType="next"
+                          blurOnSubmit={false}
+                          maxLength={15}
+                        />
+                      </Input>
+                      {phoneError && (
+                        <FormControlError>
+                          <FormControlErrorIcon as={AlertCircleIcon} />
+                          <FormControlErrorText>
+                            {phoneError}
+                          </FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
 
-                <TouchableOpacity onPress={goToLogin} disabled={loading}>
-                  <Text className={`text-center text-blue-600 ${loading ? 'opacity-60' : ''}`}>
-                    Já tem uma conta? Faça login
+                    {role === 'tecnico' && (
+                      <FormControl isInvalid={!!categoryError} isDisabled={loading}>
+                        <FormControlLabel>
+                          <FormControlLabelText>Categoria</FormControlLabelText>
+                        </FormControlLabel>
+                        <CustomSelect
+                          placeholder="Selecione uma categoria"
+                          options={TECHNICIAN_CATEGORIES}
+                          selectedValue={category}
+                          onValueChange={(value) => {
+                            setCategory(value);
+                            setCategoryError('');
+                          }}
+                          isInvalid={!!categoryError}
+                        />
+                        {categoryError && (
+                          <FormControlError>
+                            <FormControlErrorIcon as={AlertCircleIcon} />
+                            <FormControlErrorText>
+                              {categoryError}
+                            </FormControlErrorText>
+                          </FormControlError>
+                        )}
+                      </FormControl>
+                    )}
+
+                    <FormControl isInvalid={!!passwordError} isDisabled={loading}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Senha</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          type="password"
+                          placeholder="Digite sua senha"
+                          value={password}
+                          onChangeText={(text) => {
+                            setPassword(text);
+                            setPasswordError('');
+                          }}
+                          secureTextEntry
+                          returnKeyType="next"
+                          blurOnSubmit={false}
+                        />
+                      </Input>
+                      {passwordError && (
+                        <FormControlError>
+                          <FormControlErrorIcon as={AlertCircleIcon} />
+                          <FormControlErrorText>
+                            {passwordError}
+                          </FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+
+                    <FormControl isInvalid={!!confirmPasswordError} isDisabled={loading}>
+                      <FormControlLabel>
+                        <FormControlLabelText>Confirmar Senha</FormControlLabelText>
+                      </FormControlLabel>
+                      <Input>
+                        <InputField
+                          type="password"
+                          placeholder="Confirme sua senha"
+                          value={confirmPassword}
+                          onChangeText={(text) => {
+                            setConfirmPassword(text);
+                            setConfirmPasswordError('');
+                          }}
+                          secureTextEntry
+                          returnKeyType="done"
+                          blurOnSubmit={true}
+                        />
+                      </Input>
+                      {confirmPasswordError && (
+                        <FormControlError>
+                          <FormControlErrorIcon as={AlertCircleIcon} />
+                          <FormControlErrorText>
+                            {confirmPasswordError}
+                          </FormControlErrorText>
+                        </FormControlError>
+                      )}
+                    </FormControl>
+                  </>
+                ) : (
+                  <Text className="text-sm text-gray-600">
+                    Selecione o tipo de conta para exibir os campos de cadastro.
                   </Text>
-                </TouchableOpacity>
+                )}
               </VStack>
+
+              {role && (
+                <VStack space="md" className="pt-6">
+                  <Button
+                    size="lg"
+                    onPress={handleRegister}
+                    disabled={loading}
+                    className="bg-success-600"
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <ButtonText className="text-white font-semibold">
+                        Criar Conta
+                      </ButtonText>
+                    )}
+                  </Button>
+
+                  <TouchableOpacity onPress={goToLogin} disabled={loading}>
+                    <Text className={`text-center text-blue-600 ${loading ? 'opacity-60' : ''}`}>
+                      Já tem uma conta? Faça login
+                    </Text>
+                  </TouchableOpacity>
+                </VStack>
+              )}
             </VStack>
           </ScrollView>
         </Box>

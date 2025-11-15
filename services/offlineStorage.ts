@@ -155,6 +155,13 @@ export const updateMaintenanceQueueStatus = async (
       return false;
     }
 
+    const currentStatus = queue[index].syncStatus;
+
+    if (status === 'syncing' && currentStatus === 'syncing') {
+      console.log('⏭️ Registro já está sendo sincronizado, ignorando atualização duplicada:', tempId);
+      return false;
+    }
+
     queue[index].syncStatus = status;
     if (incrementRetry) {
       queue[index].retryCount = (queue[index].retryCount || 0) + 1;

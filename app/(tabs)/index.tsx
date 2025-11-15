@@ -1,3 +1,4 @@
+import { GradientTitle } from '@/components/GradientTitle';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
@@ -23,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import type { ElementType } from 'react';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView } from 'react-native';
 
 type ActionAccent = 'primary' | 'success' | 'neutral';
 type BadgeAccent = 'primary' | 'success' | 'neutral';
@@ -215,12 +216,22 @@ export default function HomeScreen() {
 
   if (profileLoading || retryingProfile) {
     return (
-      <Box className="flex-1 bg-background justify-center items-center">
-        <VStack space="md" className="items-center">
-          <ActivityIndicator size="large" color="#22C55E" />
-          <Text className="text-gray-600">
-            {retryingProfile ? 'Recarregando dados...' : 'Carregando...'}
-          </Text>
+      <Box className="flex-1 bg-white justify-center items-center">
+        <VStack space="2xl" className="items-center">
+          <VStack space="lg" className="items-center">
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={{ width: 120, height: 120, borderRadius: 30 }}
+            />
+            <GradientTitle>QrGest</GradientTitle>
+          </VStack>
+
+          <VStack space="sm" className="items-center">
+            <ActivityIndicator size="large" color="#22C55E" />
+            <Text className="text-gray-600">
+              {retryingProfile ? 'Recarregando seus dados...' : 'Preparando sua conta...'}
+            </Text>
+          </VStack>
         </VStack>
       </Box>
     );
@@ -229,86 +240,142 @@ export default function HomeScreen() {
   if (!userProfile) {
     return (
       <Box className="flex-1 bg-background">
-        <Box className="bg-primary-500 pt-20 pb-6 px-6">
-          <Heading size="2xl" className="text-white text-center font-bold">
-            QrGest
-          </Heading>
-          
-          <HStack className="mt-3 justify-center items-center" space="sm">
-            <Box 
-              className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} 
-            />
-            <Text className="text-white text-sm">
-              {isOnline ? 'Online' : 'Offline'}
-            </Text>
-          </HStack>
-        </Box>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: bottomTabOverflow + 32 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Box className="overflow-hidden">
+            <LinearGradient
+              colors={HEADER_GRADIENT_COLORS}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                width: '100%',
+                paddingTop: 56,
+                paddingBottom: 32,
+                paddingHorizontal: 24,
+                borderBottomLeftRadius: 32,
+                borderBottomRightRadius: 32,
+              }}
+            >
+              <VStack space="lg">
+                <VStack space="xs">
+                  <Text className="text-white/70 text-xs uppercase tracking-widest font-semibold">
+                    Painel principal
+                  </Text>
+                  <Heading size="3xl" className="text-white font-bold">
+                    Início
+                  </Heading>
+                </VStack>
 
-        <Box className="flex-1 justify-center items-center px-6">
-          <VStack space="xl" className="items-center max-w-md">
-            <Box className="bg-red-100 p-6 rounded-full">
-              <Icon as={InfoIcon} className="text-red-600" size="xl" />
-            </Box>
-
-            <Heading size="xl" className="text-gray-800 text-center">
-              Erro ao Carregar Dados
-            </Heading>
-
-            <VStack space="md" className="items-center">
-              <Text className="text-gray-600 text-center text-base">
-                Não foi possível carregar seus dados do usuário.
-              </Text>
-              
-              {!isOnline && (
-                <Box className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                  <HStack space="sm" className="items-start">
-                    <Text className="text-orange-600">⚠️</Text>
-                    <Text className="text-orange-700 text-sm flex-1">
-                      Você está offline. Conecte-se à internet para carregar seus dados.
-                    </Text>
-                  </HStack>
-                </Box>
-              )}
-
-              {isOnline && (
-                <Text className="text-gray-500 text-center text-sm">
-                  Pode ser um problema temporário de conexão ou servidor.
-                </Text>
-              )}
-            </VStack>
-
-            <VStack space="md" className="w-full">
-              <Button 
-                onPress={handleRetryProfile}
-                className="bg-primary-600 w-full"
-                isDisabled={!isOnline}
-              >
                 <HStack space="sm" className="items-center">
-                  <Icon as={InfoIcon} className="text-white" size="sm" />
-                  <ButtonText className="text-white font-semibold">
-                    Tentar Novamente
-                  </ButtonText>
+                  <Box
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{
+                      backgroundColor: isOnline ? ONLINE_INDICATOR_COLOR : OFFLINE_INDICATOR_COLOR,
+                    }}
+                  />
+                  <Text className="text-white text-sm font-medium">
+                    {isOnline ? 'Online' : 'Modo Offline'}
+                  </Text>
                 </HStack>
-              </Button>
+              </VStack>
+            </LinearGradient>
+          </Box>
 
-              <Button 
-                onPress={handleLogout}
-                className="bg-gray-200 w-full"
-                variant="outline"
-              >
-                <ButtonText className="text-gray-700">
-                  Sair e Fazer Login Novamente
-                </ButtonText>
-              </Button>
-            </VStack>
+          <VStack className="px-6 mt-6" space="lg">
+            <Box
+              className="rounded-3xl border shadow-soft-1"
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#E0E9FF',
+                paddingHorizontal: 24,
+                paddingVertical: 28,
+              }}
+            >
+              <LinearGradient
+                colors={HEADER_GRADIENT_COLORS}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  height: 4,
+                  width: 72,
+                  borderRadius: 9999,
+                  marginBottom: 20,
+                }}
+              />
 
-            <Box className="bg-blue-50 p-4 rounded-lg border border-blue-200 w-full">
-              <Text className="text-blue-700 text-xs text-center">
-                💡 Se o problema persistir, tente fazer logout e login novamente.
-              </Text>
+              <VStack space="lg" className="items-center">
+                <Box
+                  className="rounded-full p-5"
+                  style={{ backgroundColor: '#FEE2E2' }}
+                >
+                  <Icon as={InfoIcon} className="text-red-600" size="lg" />
+                </Box>
+
+                <VStack space="sm" className="items-center">
+                  <Heading size="lg" className="text-neutral-900 text-center">
+                    Não foi possível carregar seus dados
+                  </Heading>
+                  <Text className="text-neutral-600 text-center">
+                    Encontramos um problema ao carregar as informações da sua conta. Tente novamente para continuar.
+                  </Text>
+                </VStack>
+
+                {!isOnline ? (
+                  <Box
+                    className="rounded-2xl border px-4 py-4 w-full"
+                    style={{
+                      backgroundColor: '#FFF4E5',
+                      borderColor: '#FED7AA',
+                    }}
+                  >
+                    <HStack space="sm" className="items-start">
+                      <Icon as={InfoIcon} className="text-orange-500" size="sm" />
+                      <Text className="text-orange-700 text-sm flex-1">
+                        Você está offline. Conecte-se à internet para sincronizar os dados mais recentes.
+                      </Text>
+                    </HStack>
+                  </Box>
+                ) : (
+                  <Text className="text-neutral-500 text-sm text-center">
+                    Pode ser um problema temporário de conexão ou do servidor.
+                  </Text>
+                )}
+
+                <VStack space="sm" className="w-full">
+                  <Button
+                    onPress={handleRetryProfile}
+                    className="bg-primary-600"
+                    isDisabled={!isOnline}
+                  >
+                    <HStack space="sm" className="items-center justify-center">
+                      <Icon as={InfoIcon} className="text-white" size="sm" />
+                      <ButtonText className="text-white font-semibold">
+                        Tentar novamente
+                      </ButtonText>
+                    </HStack>
+                  </Button>
+
+                  <Button
+                    onPress={handleLogout}
+                    variant="outline"
+                    className="border-gray-300 bg-white"
+                  >
+                    <ButtonText className="text-gray-700">
+                      Sair e fazer login novamente
+                    </ButtonText>
+                  </Button>
+                </VStack>
+
+                <Text className="text-blue-600 text-xs text-center">
+                  💡 Se o problema persistir, finalize a sessão e tente novamente mais tarde.
+                </Text>
+              </VStack>
             </Box>
           </VStack>
-        </Box>
+        </ScrollView>
       </Box>
     );
   }
@@ -316,38 +383,153 @@ export default function HomeScreen() {
   if (userProfile.role === 'tecnico' && (!userProfile.equipments || userProfile.equipments.length === 0)) {
     return (
       <Box className="flex-1 bg-background">
-        <Box className="bg-primary-500 pt-20 pb-6 px-6">
-          <Heading size="2xl" className="text-white text-center font-bold">
-            Início
-          </Heading>
-        </Box>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingBottom: bottomTabOverflow + 32 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Box className="overflow-hidden">
+            <LinearGradient
+              colors={HEADER_GRADIENT_COLORS}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                width: '100%',
+                paddingTop: 56,
+                paddingBottom: 32,
+                paddingHorizontal: 24,
+                borderBottomLeftRadius: 32,
+                borderBottomRightRadius: 32,
+              }}
+            >
+              <VStack space="lg">
+                <VStack space="xs">
+                  <Text className="text-white/70 text-xs uppercase tracking-widest font-semibold">
+                    Painel principal
+                  </Text>
+                  <Heading size="3xl" className="text-white font-bold">
+                    Início
+                  </Heading>
+                </VStack>
 
-        <VStack className="flex-1 px-6 mt-6" space="lg">
-          <VStack space="sm">
-            <Heading size="3xl" className="text-gray-800">
-              Bem-vindo, {userProfile.name}
-            </Heading>
-          </VStack>
-
-          <Box className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-            <VStack space="md" className="items-center">
-              <Text className="text-yellow-600 text-4xl">⚠️</Text>
-              <Heading size="lg" className="text-yellow-800 text-center">
-                Nenhum Equipamento Associado
-              </Heading>
-              <Text className="text-yellow-700 text-center">
-                Você ainda não foi associado a nenhum equipamento. 
-                Entre em contato com o administrador para ser designado a equipamentos.
-              </Text>
-            </VStack>
+                <HStack space="sm" className="items-center">
+                  <Box
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{
+                      backgroundColor: isOnline ? ONLINE_INDICATOR_COLOR : OFFLINE_INDICATOR_COLOR,
+                    }}
+                  />
+                  <Text className="text-white text-sm font-medium">
+                    {isOnline ? 'Online' : 'Modo Offline'}
+                  </Text>
+                </HStack>
+              </VStack>
+            </LinearGradient>
           </Box>
 
-          <HStack className="justify-center items-center pt-6 pb-8">
-            <Button onPress={handleLogout} className="bg-white border border-gray-300">
-              <ButtonText className="text-gray-600">Sair</ButtonText>
-            </Button>
-          </HStack>
-        </VStack>
+          <VStack className="px-6 mt-6" space="lg">
+            <VStack space="xs">
+              <Heading size="xl" className="text-neutral-900">
+                Bem-vindo, {userProfile.name}
+              </Heading>
+              <Text className="text-neutral-500 text-sm">
+                Assim que um administrador associar equipamentos ao seu usuário, eles aparecerão aqui.
+              </Text>
+            </VStack>
+
+            <Box
+              className="rounded-3xl border shadow-soft-1"
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderColor: '#FFE8B4',
+                paddingHorizontal: 24,
+                paddingVertical: 28,
+              }}
+            >
+              <LinearGradient
+                colors={HEADER_GRADIENT_COLORS}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{
+                  height: 4,
+                  width: 72,
+                  borderRadius: 9999,
+                  marginBottom: 20,
+                }}
+              />
+
+              <VStack space="lg" className="items-center">
+                <Box
+                  className="rounded-full p-5"
+                  style={{ backgroundColor: '#FEF3C7' }}
+                >
+                  <Icon as={SettingsIcon} className="text-amber-500" size="lg" />
+                </Box>
+
+                <VStack space="sm" className="items-center">
+                  <Heading size="lg" className="text-neutral-900 text-center">
+                    Nenhum equipamento associado
+                  </Heading>
+                  <Text className="text-neutral-600 text-center">
+                    Você ainda não possui equipamentos atribuídos. Solicite ao administrador que vincule os ativos necessários ao seu perfil.
+                  </Text>
+                </VStack>
+
+                {!isOnline && (
+                  <Box
+                    className="rounded-2xl border px-4 py-4 w-full"
+                    style={{
+                      backgroundColor: '#FFF4E5',
+                      borderColor: '#FED7AA',
+                    }}
+                  >
+                    <HStack space="sm" className="items-start">
+                      <Icon as={InfoIcon} className="text-orange-500" size="sm" />
+                      <Text className="text-orange-700 text-sm flex-1">
+                        Você está offline. Ao receber uma designação, conecte-se para sincronizar e visualizar os equipamentos.
+                      </Text>
+                    </HStack>
+                  </Box>
+                )}
+
+                <VStack space="sm" className="w-full">
+                  <Button
+                    onPress={handleRetryProfile}
+                    className="bg-primary-600"
+                    isDisabled={!isOnline}
+                  >
+                    <HStack space="sm" className="items-center justify-center">
+                      <Icon as={InfoIcon} className="text-white" size="sm" />
+                      <ButtonText className="text-white font-semibold">
+                        Atualizar dados
+                      </ButtonText>
+                    </HStack>
+                  </Button>
+
+                  <Button
+                    onPress={handleMyEquipments}
+                    variant="outline"
+                    className="border-gray-300 bg-white"
+                  >
+                    <ButtonText className="text-gray-700">
+                      Abrir Meus Equipamentos
+                    </ButtonText>
+                  </Button>
+                </VStack>
+
+                <Text className="text-neutral-400 text-xs text-center">
+                  Em caso de dúvida, procure o administrador responsável pela sua equipe.
+                </Text>
+              </VStack>
+            </Box>
+
+            <HStack className="justify-center pb-10">
+              <Button onPress={handleLogout} variant="outline" className="border-gray-300 bg-white px-6">
+                <ButtonText className="text-gray-600">Sair da conta</ButtonText>
+              </Button>
+            </HStack>
+          </VStack>
+        </ScrollView>
       </Box>
     );
   }

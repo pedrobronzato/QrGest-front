@@ -1,3 +1,4 @@
+
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { FormControl, FormControlLabel, FormControlLabelText } from '@/components/ui/form-control';
@@ -27,7 +28,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, ActivityIndicator, Alert, FlatList, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, TextInput, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
 
 const ACCEPTED_IMAGE_FORMATS = ['image/jpeg', 'image/jpg', 'image/png'];
@@ -217,6 +218,8 @@ interface DateInputProps {
   onValueChange: (date: string) => void;
   placeholder?: string;
   isInvalid?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 const DateInput: React.FC<DateInputProps> = ({
@@ -224,6 +227,8 @@ const DateInput: React.FC<DateInputProps> = ({
   onValueChange,
   placeholder = "DD/MM/AAAA",
   isInvalid = false,
+  onFocus,
+  onBlur,
 }) => {
   const formatDate = (numbers: string) => {
     let formatted = numbers;
@@ -263,6 +268,12 @@ const DateInput: React.FC<DateInputProps> = ({
         maxLength={10}
         returnKeyType="next"
         blurOnSubmit={false}
+        onFocus={() => {
+          onFocus?.();
+        }}
+        onBlur={() => {
+          onBlur?.();
+        }}
       />
     </Input>
   );
@@ -279,6 +290,18 @@ export default function EquipmentMaintenanceScreen() {
   const [showHistory, setShowHistory] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'pending' | 'offline'>('offline');
   const [fileDetails, setFileDetails] = useState<Record<string, { size: number; mimeType: string }>>({});
+
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const focusedInputCount = useRef(0);
+  const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimeoutRef.current) {
+        clearTimeout(collapseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   
   const { idToken } = useAuthContext();
@@ -416,6 +439,39 @@ export default function EquipmentMaintenanceScreen() {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleInputFocus = () => {
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+      collapseTimeoutRef.current = null;
+    }
+    focusedInputCount.current += 1;
+    if (!isHeaderCollapsed) {
+      setIsHeaderCollapsed(true);
+    }
+  };
+
+  const handleInputBlur = () => {
+    focusedInputCount.current = Math.max(0, focusedInputCount.current - 1);
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+    }
+    collapseTimeoutRef.current = setTimeout(() => {
+      if (focusedInputCount.current === 0) {
+        setIsHeaderCollapsed(false);
+      }
+    }, 150);
+  };
+
+  const handleDismissKeyboard = () => {
+    Keyboard.dismiss();
+    focusedInputCount.current = 0;
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+      collapseTimeoutRef.current = null;
+    }
+    setIsHeaderCollapsed(false);
   };
 
   const handleSaveOffline = async () => {
@@ -926,7 +982,7 @@ ${isOnline
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={handleDismissKeyboard}>
         <Box className="flex-1 bg-background">
           {sending && (
             <Box className="absolute inset-0 bg-white bg-opacity-95 z-50 justify-center items-center">
@@ -956,89 +1012,99 @@ ${isOnline
               end={{ x: 1, y: 0 }}
               style={{
                 width: '100%',
-                paddingTop: Platform.OS === 'ios' ? 56 : 48,
-                paddingBottom: 20,
+                paddingTop: isHeaderCollapsed
+                  ? (Platform.OS === 'ios' ? 24 : 20)
+                  : Platform.OS === 'ios' ? 56 : 48,
+                paddingBottom: isHeaderCollapsed ? 14 : 20,
                 paddingHorizontal: 20,
                 borderBottomLeftRadius: 28,
                 borderBottomRightRadius: 28,
               }}
             >
-              <VStack space="md">
+              <VStack space={isHeaderCollapsed ? 'md' : 'lg'}>
                 <HStack className="items-center justify-between">
                   <Pressable onPress={() => router.back()} className="bg-white/10 p-2 rounded-full">
                     <Icon as={ArrowLeftIcon} className="text-white w-6 h-6" />
                   </Pressable>
-                  <Heading size="md" className="text-white font-semibold uppercase tracking-[2px]">
-                    Manutenção
-                  </Heading>
                   <Box className="w-10" />
                 </HStack>
 
-                <VStack space="xs">
-                  <Text className="text-white/60 text-[11px] uppercase tracking-[3px] font-semibold">
-                    Gestão de ativos
-                  </Text>
+                {isHeaderCollapsed ? (
                   <Heading size="2xl" className="text-white font-bold">
                     Registro de Manutenção
                   </Heading>
-                  <Text className="text-white/80 text-xs">
-                    Atualize o histórico e registre intervenções neste equipamento.
-                  </Text>
-                </VStack>
-
-                <Box
-                  className="rounded-3xl"
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                    paddingHorizontal: 16,
-                    paddingVertical: 16,
-                  }}
-                >
+                ) : (
                   <VStack space="md">
+                    <Heading size="md" className="text-white font-semibold uppercase tracking-[2px]">
+                      Manutenção
+                    </Heading>
                     <VStack space="xs">
-                      <Text className="text-white/60 text-[11px] uppercase tracking-wide">
-                        Equipamento
+                      <Text className="text-white/60 text-[11px] uppercase tracking-[3px] font-semibold">
+                        Gestão de ativos
                       </Text>
-                      <Heading size="lg" className="text-white font-semibold">
-                        {equipment.name}
+                      <Heading size="2xl" className="text-white font-bold">
+                        Registro de Manutenção
                       </Heading>
                       <Text className="text-white/80 text-xs">
-                        {equipmentTypeMeta.label} • {equipment.location.address}
+                        Atualize o histórico e registre intervenções neste equipamento.
                       </Text>
                     </VStack>
 
-                    <HStack space="sm" className="items-center justify-between flex-wrap">
-                      <HStack space="sm" className="items-center">
-                        <Box className="rounded-full bg-white/20 px-3 py-1">
-                          <Text className="text-white text-xs font-semibold uppercase tracking-wide">
-                            {equipmentStatusMeta.label}
+                    <Box
+                      className="rounded-3xl"
+                      style={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                        paddingHorizontal: 16,
+                        paddingVertical: 16,
+                      }}
+                    >
+                      <VStack space="md">
+                        <VStack space="xs">
+                          <Text className="text-white/60 text-[11px] uppercase tracking-wide">
+                            Equipamento
                           </Text>
-                        </Box>
-                        <Box className="rounded-full bg-white/20 px-3 py-1">
-                          <Text className="text-white text-xs font-semibold uppercase tracking-wide">
-                            {getSyncStatusText(syncStatus)}
+                          <Heading size="lg" className="text-white font-semibold">
+                            {equipment.name}
+                          </Heading>
+                          <Text className="text-white/80 text-xs">
+                            {equipmentTypeMeta.label} • {equipment.location.address}
                           </Text>
-                        </Box>
-                        {!isOnline && (
-                          <Box className="rounded-full bg-yellow-400/30 px-3 py-1">
-                            <Text className="text-yellow-100 text-xs font-semibold uppercase tracking-wide">
-                              Offline
-                            </Text>
-                          </Box>
-                        )}
-                      </HStack>
+                        </VStack>
 
-                      {pendingCount > 0 && (
-                        <HStack space="xs" className="items-center">
-                          <Box className="w-2 h-2 rounded-full bg-yellow-300" />
-                          <Text className="text-yellow-100 text-xs font-medium">
-                            {pendingCount} {pendingCount === 1 ? 'pendente' : 'pendentes'}
-                          </Text>
+                        <HStack space="sm" className="items-center justify-between flex-wrap">
+                          <HStack space="sm" className="items-center">
+                            <Box className="rounded-full bg-white/20 px-3 py-1">
+                              <Text className="text-white text-xs font-semibold uppercase tracking-wide">
+                                {equipmentStatusMeta.label}
+                              </Text>
+                            </Box>
+                            <Box className="rounded-full bg-white/20 px-3 py-1">
+                              <Text className="text-white text-xs font-semibold uppercase tracking-wide">
+                                {getSyncStatusText(syncStatus)}
+                              </Text>
+                            </Box>
+                            {!isOnline && (
+                              <Box className="rounded-full bg-yellow-400/30 px-3 py-1">
+                                <Text className="text-yellow-100 text-xs font-semibold uppercase tracking-wide">
+                                  Offline
+                                </Text>
+                              </Box>
+                            )}
+                          </HStack>
+
+                          {pendingCount > 0 && (
+                            <HStack space="xs" className="items-center">
+                              <Box className="w-2 h-2 rounded-full bg-yellow-300" />
+                              <Text className="text-yellow-100 text-xs font-medium">
+                                {pendingCount} {pendingCount === 1 ? 'pendente' : 'pendentes'}
+                              </Text>
+                            </HStack>
+                          )}
                         </HStack>
-                      )}
-                    </HStack>
+                      </VStack>
+                    </Box>
                   </VStack>
-                </Box>
+                )}
               </VStack>
             </LinearGradient>
           </Box>
@@ -1087,7 +1153,6 @@ ${isOnline
             <Text className="text-gray-600">{equipmentTypeMeta.label} • {equipment.location.address}</Text>
           </VStack>
         </Box>
-
         <Box
           className="rounded-3xl border shadow-soft-1"
           style={{
@@ -1114,6 +1179,8 @@ ${isOnline
                   onChangeText={(text) => updateFormData({ title: text })}
                   returnKeyType="next"
                   blurOnSubmit={false}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                 />
               </Input>
             </FormControl>
@@ -1126,6 +1193,8 @@ ${isOnline
                 value={formData.reviewDate}
                 onValueChange={(date) => updateFormData({ reviewDate: date })}
                 placeholder="DD/MM/AAAA"
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
               />
             </FormControl>
 
@@ -1152,6 +1221,8 @@ ${isOnline
                 placeholder="Descreva detalhadamente o serviço realizado..."
                 value={formData.serviceDescription}
                 onChangeText={(text) => updateFormData({ serviceDescription: text })}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
               />
             </FormControl>
 
@@ -1166,6 +1237,8 @@ ${isOnline
                 placeholder="Descreva as peças trocadas ou ajustes realizados..."
                 value={formData.partsReplaced}
                 onChangeText={(text) => updateFormData({ partsReplaced: text })}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
               />
             </FormControl>
 
@@ -1177,6 +1250,8 @@ ${isOnline
                 value={formData.nextMaintenanceDate}
                 onValueChange={(date) => updateFormData({ nextMaintenanceDate: date })}
                 placeholder="DD/MM/AAAA"
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
               />
             </FormControl>
 
@@ -1347,7 +1422,6 @@ ${isOnline
             </FormControl>
           </VStack>
         </Box>
-
         <Box
           className="rounded-3xl border shadow-soft-1"
           style={{

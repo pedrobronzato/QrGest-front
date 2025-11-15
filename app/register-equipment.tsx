@@ -158,6 +158,8 @@ interface DateInputProps {
   isInvalid?: boolean;
   inputRef?: React.Ref<any>;
   onSubmitEditing?: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 const DateInput: React.FC<DateInputProps> = ({
@@ -167,6 +169,8 @@ const DateInput: React.FC<DateInputProps> = ({
   isInvalid = false,
   inputRef,
   onSubmitEditing,
+  onFocus,
+  onBlur,
 }) => {
   const formatDate = (numbers: string) => {
     let formatted = numbers;
@@ -212,6 +216,12 @@ const DateInput: React.FC<DateInputProps> = ({
         returnKeyType="next"
         blurOnSubmit={false}
         onSubmitEditing={onSubmitEditing}
+        onFocus={() => {
+          onFocus?.();
+        }}
+        onBlur={() => {
+          onBlur?.();
+        }}
       />
     </Input>
   );
@@ -231,6 +241,8 @@ interface LocationInputProps {
   isInvalid?: boolean;
   inputRef?: React.Ref<any>;
   onSubmitEditing?: () => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 const LocationInput: React.FC<LocationInputProps> = ({
@@ -239,6 +251,8 @@ const LocationInput: React.FC<LocationInputProps> = ({
   isInvalid = false,
   inputRef,
   onSubmitEditing,
+  onFocus,
+  onBlur,
 }) => {
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
@@ -351,6 +365,12 @@ const LocationInput: React.FC<LocationInputProps> = ({
               returnKeyType="next"
               blurOnSubmit={false}
               onSubmitEditing={onSubmitEditing}
+            onFocus={() => {
+              onFocus?.();
+            }}
+            onBlur={() => {
+              onBlur?.();
+            }}
             />
           </Input>
         </Box>
@@ -447,6 +467,10 @@ export default function RegisterEquipmentScreen() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const focusedInputCount = useRef(0);
+  const collapseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
 
   useEffect(() => {
@@ -512,6 +536,14 @@ export default function RegisterEquipmentScreen() {
       isActive = false;
     };
   }, [idToken]);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimeoutRef.current) {
+        clearTimeout(collapseTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const getEquipmentsByType = () => {
     if (!formData.type || formData.type === 'none') return [];
@@ -651,6 +683,39 @@ export default function RegisterEquipmentScreen() {
     }
   };
 
+  const handleInputFocus = () => {
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+      collapseTimeoutRef.current = null;
+    }
+    focusedInputCount.current += 1;
+    if (!isHeaderCollapsed) {
+      setIsHeaderCollapsed(true);
+    }
+  };
+
+  const handleInputBlur = () => {
+    focusedInputCount.current = Math.max(0, focusedInputCount.current - 1);
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+    }
+    collapseTimeoutRef.current = setTimeout(() => {
+      if (focusedInputCount.current === 0) {
+        setIsHeaderCollapsed(false);
+      }
+    }, 150);
+  };
+
+  const handleDismissKeyboard = () => {
+    Keyboard.dismiss();
+    focusedInputCount.current = 0;
+    if (collapseTimeoutRef.current) {
+      clearTimeout(collapseTimeoutRef.current);
+      collapseTimeoutRef.current = null;
+    }
+    setIsHeaderCollapsed(false);
+  };
+
   const getFieldContainerClassName = (hasError?: boolean) =>
     `rounded-2xl border ${hasError ? 'border-red-500 bg-red-50/40' : 'border-neutral-200 bg-neutral-50'}`;
 
@@ -664,7 +729,7 @@ export default function RegisterEquipmentScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <TouchableWithoutFeedback onPress={handleDismissKeyboard}>
         <Box className="flex-1 bg-background">
           <Box className="overflow-hidden">
             <LinearGradient
@@ -673,14 +738,14 @@ export default function RegisterEquipmentScreen() {
               end={{ x: 1, y: 0 }}
               style={{
                 width: '100%',
-                paddingTop: 56,
-                paddingBottom: 28,
+                paddingTop: isHeaderCollapsed ? 24 : 56,
+                paddingBottom: isHeaderCollapsed ? 16 : 28,
                 paddingHorizontal: 24,
                 borderBottomLeftRadius: 28,
                 borderBottomRightRadius: 28,
               }}
             >
-              <VStack space="lg">
+              <VStack space={isHeaderCollapsed ? 'md' : 'lg'}>
                 <HStack className="items-center justify-between">
                   <Pressable onPress={() => router.back()} className="bg-white/10 p-2 rounded-full">
                     <Icon as={ArrowLeftIcon} className="text-white w-6 h-6" />
@@ -688,17 +753,23 @@ export default function RegisterEquipmentScreen() {
                   <Box className="w-10" />
                 </HStack>
 
-                <VStack space="xs">
-                  <Text className="text-white/60 text-xs uppercase tracking-widest font-semibold">
-                    Registro de ativos
-                  </Text>
-                  <Heading size="3xl" className="text-white font-bold">
+                {isHeaderCollapsed ? (
+                  <Heading size="2xl" className="text-white font-bold">
                     Cadastrar Equipamento
                   </Heading>
-                  <Text className="text-white/80 text-sm">
-                    Preencha os dados para adicionar um novo equipamento ao inventário.
-                  </Text>
-                </VStack>
+                ) : (
+                  <VStack space="xs">
+                    <Text className="text-white/60 text-xs uppercase tracking-widest font-semibold">
+                      Registro de ativos
+                    </Text>
+                    <Heading size="3xl" className="text-white font-bold">
+                      Cadastrar Equipamento
+                    </Heading>
+                    <Text className="text-white/80 text-sm">
+                      Preencha os dados para adicionar um novo equipamento ao inventário.
+                    </Text>
+                  </VStack>
+                )}
               </VStack>
             </LinearGradient>
           </Box>
@@ -765,6 +836,8 @@ export default function RegisterEquipmentScreen() {
                           onSubmitEditing={() =>
                             installationDateRef.current && installationDateRef.current.focus()
                           }
+                          onFocus={handleInputFocus}
+                          onBlur={handleInputBlur}
                         />
                       </Input>
                       {errors.name && (
@@ -784,6 +857,8 @@ export default function RegisterEquipmentScreen() {
                         isInvalid={!!errors.installationDate}
                         inputRef={installationDateRef}
                         onSubmitEditing={() => locationRef.current && locationRef.current.focus()}
+                        onFocus={handleInputFocus}
+                        onBlur={handleInputBlur}
                       />
                       {errors.installationDate && (
                         <FormControlError>
@@ -819,6 +894,8 @@ export default function RegisterEquipmentScreen() {
                         onValueChange={updateLocationData}
                         isInvalid={!!errors.location}
                         inputRef={locationRef}
+                        onFocus={handleInputFocus}
+                        onBlur={handleInputBlur}
                       />
                       {errors.location && (
                         <FormControlError>
@@ -939,6 +1016,8 @@ export default function RegisterEquipmentScreen() {
                                       }
                                     }
                                   }}
+                                  onFocus={handleInputFocus}
+                                  onBlur={handleInputBlur}
                                 />
                               </Input>
                               {errors[field.id] && (

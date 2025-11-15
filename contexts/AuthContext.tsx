@@ -25,6 +25,9 @@ interface AuthProviderProps {
 
 const AUTH_STORAGE_KEY = '@qrgest:auth_user';
 const TOKEN_STORAGE_KEY = '@qrgest:auth_token';
+const MAX_FETCH_PROFILE_RETRIES = 4;
+const FETCH_PROFILE_RETRY_DELAY = 2000;
+const INITIAL_PROFILE_FETCH_DELAY = 1500;
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -50,38 +53,75 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const fetchUserProfile = React.useCallback(async (forceCache: boolean = false) => {
-    if (!idToken) return;
-    
-    setProfileLoading(true);
-    try {
-      const result = await getUserProfile(idToken, forceCache);
-      console.log(result, 'result');
-      
-      if (result.success && result.profile) {
-        setUserProfile(result.profile);
-        
-        if (result.fromCache) {
-          console.log('👤 Perfil carregado do cache');
+  const fetchUserProfile = React.useCallback(
+    async (forceCache: boolean = false) => {
+      if (!idToken) return;
+
+      const attemptFetch = async (attempt: number): Promise<void> => {
+        if (attempt === 0) {
+          setProfileLoading(true);
         }
-        
-        if (result.profile.role === 'tecnico' && result.profile.equipments && result.profile.equipments.length > 0 && !result.fromCache) {
-          console.log(`💾 [AuthContext] Salvando ${result.profile.equipments.length} equipamentos do técnico no cache...`);
-          const { cacheEquipments } = await import('@/services/offlineStorage');
-          const saved = await cacheEquipments(result.profile.equipments as any);
-          console.log(`💾 [AuthContext] Equipamentos do técnico no cache: ${saved ? 'SIM ✅' : 'NÃO ❌'}`);
+
+        let shouldRetry = false;
+
+        try {
+          const isRecentSignUp =
+            attempt === 0 &&
+            user?.metadata?.creationTime &&
+            user?.metadata?.lastSignInTime &&
+            user.metadata.creationTime === user.metadata.lastSignInTime;
+
+          if (isRecentSignUp) {
+            await new Promise((resolve) => setTimeout(resolve, INITIAL_PROFILE_FETCH_DELAY));
+          }
+
+          const result = await getUserProfile(idToken, forceCache);
+
+          if (result.success && result.profile) {
+            setUserProfile(result.profile);
+            setProfileLoading(false);
+            return;
+          }
+
+          const normalizedError = result.error?.toLowerCase() ?? '';
+          if (
+            normalizedError.includes('usuário não encontrado') &&
+            attempt < MAX_FETCH_PROFILE_RETRIES
+          ) {
+            shouldRetry = true;
+            console.warn(
+              `⚠️ Perfil ainda não disponível. Nova tentativa em ${FETCH_PROFILE_RETRY_DELAY}ms (${attempt + 2}/${MAX_FETCH_PROFILE_RETRIES + 1})`
+            );
+          } else {
+            console.warn('Erro ao buscar perfil:', result.error);
+            setUserProfile(null);
+          }
+        } catch (error) {
+          if (attempt < MAX_FETCH_PROFILE_RETRIES) {
+            shouldRetry = true;
+            console.warn(
+              `⚠️ Erro ao buscar perfil. Nova tentativa em ${FETCH_PROFILE_RETRY_DELAY}ms (${attempt + 2}/${MAX_FETCH_PROFILE_RETRIES + 1})`
+            );
+          } else {
+            console.warn('Erro ao buscar perfil do usuário:', error);
+            setUserProfile(null);
+          }
         }
-      } else {
-        console.error('Erro ao buscar perfil:', result.error);
-        setUserProfile(null);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar perfil do usuário:', error);
-      setUserProfile(null);
-    } finally {
-      setProfileLoading(false);
-    }
-  }, [idToken]);
+
+        if (shouldRetry) {
+          setTimeout(() => {
+            attemptFetch(attempt + 1);
+          }, FETCH_PROFILE_RETRY_DELAY);
+          return;
+        }
+
+        setProfileLoading(false);
+      };
+
+      await attemptFetch(0);
+    },
+    [idToken, user]
+  );
 
   useEffect(() => {
     const loadSavedAuth = async () => {

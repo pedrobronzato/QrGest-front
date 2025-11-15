@@ -2,24 +2,27 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { createMaintenanceRecord } from './equipment';
 import { uploadImages } from './image';
 import {
-    getMaintenanceQueue,
-    removeFromMaintenanceQueue,
-    saveLastSyncInfo,
-    updateMaintenanceQueueStatus
+  getMaintenanceQueue,
+  removeFromMaintenanceQueue,
+  saveLastSyncInfo,
+  updateMaintenanceQueueStatus
 } from './offlineStorage';
 
-export const syncPendingMaintenances = async (
-  idToken: string
-): Promise<{
+type SyncResult = {
   success: boolean;
   syncedCount: number;
   failedCount: number;
   errors: string[];
-}> => {
+};
+
+let activeMaintenanceSync: Promise<SyncResult> | null = null;
+const syncingMaintenanceIds = new Set<string>();
+
+const executeMaintenanceSync = async (idToken: string): Promise<SyncResult> => {
   console.log('🔄 Iniciando sincronização de manutenções...');
 
   const queue = await getMaintenanceQueue();
-  
+
   if (queue.length === 0) {
     console.log('ℹ️ Nenhuma manutenção pendente para sincronizar');
     return {
@@ -48,18 +51,31 @@ export const syncPendingMaintenances = async (
       continue;
     }
 
+    if (syncingMaintenanceIds.has(maintenance.tempId)) {
+      console.log(`⏭️ Manutenção ${maintenance.tempId} já está sendo processada em memória, ignorando duplicação`);
+      continue;
+    }
+
+    syncingMaintenanceIds.add(maintenance.tempId);
+
     try {
-      await updateMaintenanceQueueStatus(maintenance.tempId, 'syncing');
+      const statusUpdated = await updateMaintenanceQueueStatus(maintenance.tempId, 'syncing');
+
+      if (!statusUpdated) {
+        console.log(`⏭️ Manutenção já está sendo sincronizada em outro processo: ${maintenance.tempId}`);
+        syncingMaintenanceIds.delete(maintenance.tempId);
+        continue;
+      }
 
       const { tempId, createdAt, syncStatus, retryCount, localAttachments, ...maintenanceData } = maintenance;
 
       let uploadedUrls: string[] = [];
       if (localAttachments && localAttachments.length > 0) {
         console.log(`📎 ${localAttachments.length} anexo(s) local(is) para upload`);
-        
+
         const imageUris: string[] = [];
         const missingFiles: string[] = [];
-        
+
         for (const attachment of localAttachments) {
           if (attachment.type === 'image') {
             try {
@@ -76,12 +92,12 @@ export const syncPendingMaintenances = async (
             }
           }
         }
-        
+
         if (imageUris.length > 0) {
           console.log(`📤 Fazendo upload de ${imageUris.length} imagem(ns)...`);
           try {
             const uploadResult = await uploadImages(imageUris, idToken);
-            
+
             if (uploadResult.success && uploadResult.urls) {
               uploadedUrls = uploadResult.urls;
               console.log(`✅ Upload concluído: ${uploadedUrls.length} URL(s)`);
@@ -94,7 +110,7 @@ export const syncPendingMaintenances = async (
             errors.push(`Erro no upload: ${uploadError.message}`);
           }
         }
-        
+
         if (missingFiles.length > 0) {
           console.warn(`⚠️ ${missingFiles.length} arquivo(s) não encontrado(s): ${missingFiles.join(', ')}`);
           maintenanceData.attachments = [
@@ -110,7 +126,7 @@ export const syncPendingMaintenances = async (
       console.log(`   - Equipamento: ${maintenanceData.equipmentId}`);
       console.log(`   - Título: ${maintenanceData.title}`);
       console.log(`   - Anexos: ${maintenanceData.attachments?.length || 0}`);
-      
+
       const result = await createMaintenanceRecord(maintenanceData, idToken);
 
       if (result.success) {
@@ -129,6 +145,9 @@ export const syncPendingMaintenances = async (
       failedCount++;
       errors.push(error.message || 'Erro desconhecido');
       console.error(`❌ Erro ao sincronizar ${maintenance.tempId}:`, error);
+    }
+    finally {
+      syncingMaintenanceIds.delete(maintenance.tempId);
     }
   }
 
@@ -150,6 +169,21 @@ export const syncPendingMaintenances = async (
     failedCount,
     errors,
   };
+};
+
+export const syncPendingMaintenances = async (idToken: string): Promise<SyncResult> => {
+  if (activeMaintenanceSync) {
+    console.log('⏳ Sincronização de manutenções já em andamento, reutilizando chamada existente');
+    return activeMaintenanceSync;
+  }
+
+  activeMaintenanceSync = executeMaintenanceSync(idToken);
+
+  try {
+    return await activeMaintenanceSync;
+  } finally {
+    activeMaintenanceSync = null;
+  }
 };
 
 export const hasPendingSync = async (): Promise<boolean> => {

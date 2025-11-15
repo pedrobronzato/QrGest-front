@@ -201,7 +201,7 @@ export const getUserProfile = async (
       fromCache: false,
     };
   } catch (error: any) {
-    console.error('Erro ao buscar perfil do usuário:', error);
+    console.warn('Erro ao buscar perfil do usuário:', error);
     
     const cached = await getCachedUserProfile();
     if (cached) {

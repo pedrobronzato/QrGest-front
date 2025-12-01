@@ -24,6 +24,7 @@ export interface EquipmentData {
     };
   };
   status: string;
+  onlyOnSiteMaintenance: boolean;
   selectedEquipment: string;
   specificFields: EquipmentSpecificFieldWithValue[];
 }
@@ -62,6 +63,7 @@ export interface Equipment {
     };
   };
   status: string;
+  onlyOnSiteMaintenance?: boolean;
   selectedEquipment: string;
   specificFields?: EquipmentSpecificFieldWithValue[] | Record<string, string | number>;
   details?: EquipmentSpecificFieldWithValue[] | Record<string, string | number>;

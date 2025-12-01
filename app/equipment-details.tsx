@@ -61,13 +61,22 @@ const resolveLocationLabel = (location?: Equipment['location']) => {
 export default function EquipmentDetailsScreen() {
   const [equipment, setEquipment] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
-  const { idToken } = useAuthContext();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { idToken, userProfile } = useAuthContext();
+  const { id, fromQR } = useLocalSearchParams<{ id: string; fromQR?: string }>();
+  const isFromQrCode = typeof fromQR === 'string' && ['true', '1', 'yes'].includes(fromQR.toLowerCase());
+
+  const handleGoBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }, []);
 
   const loadEquipment = useCallback(async () => {
     if (!id) {
       Alert.alert('Erro', 'ID do equipamento não fornecido');
-      router.back();
+      handleGoBack();
       return;
     }
 
@@ -79,16 +88,16 @@ export default function EquipmentDetailsScreen() {
         setEquipment(result.data);
       } else {
         Alert.alert('Erro', result.error || 'Erro ao carregar equipamento');
-        router.back();
+        handleGoBack();
       }
     } catch (error) {
       console.error('Erro ao carregar equipamento:', error);
       Alert.alert('Erro', 'Erro ao carregar equipamento');
-      router.back();
+      handleGoBack();
     } finally {
       setLoading(false);
     }
-  }, [id, idToken]);
+  }, [handleGoBack, id, idToken]);
 
   useEffect(() => {
     loadEquipment();
@@ -283,6 +292,8 @@ const mapFieldsToDetailItems = (
   const statusMeta = resolveEquipmentStatus(equipment.status);
   const statusBadgeColors = statusMeta.badgeColors;
   const typeMeta = resolveEquipmentType(equipment.type);
+  const isAdmin = userProfile?.role === 'admin';
+  const canRegisterMaintenance = isFromQrCode || !equipment.onlyOnSiteMaintenance;
 
   const generalInformation: DetailItem[] = [
     {
@@ -371,7 +382,7 @@ const mapFieldsToDetailItems = (
             <VStack space="lg">
               <HStack className="items-center justify-between">
                 <Pressable
-                  onPress={() => router.back()}
+                  onPress={handleGoBack}
                   className="bg-white/10 p-2 rounded-full"
                 >
                   <Icon as={ArrowLeftIcon} className="text-white w-6 h-6" />
@@ -485,30 +496,44 @@ const mapFieldsToDetailItems = (
                   Ações rápidas
                 </Heading>
                 <Text className="text-neutral-500 text-sm">
-                  Gere o QR Code do equipamento ou registre uma nova manutenção.
+                  {canRegisterMaintenance
+                    ? 'Registre uma nova manutenção ou gere o QR Code do equipamento.'
+                    : 'Para registrar manutenções é necessário ler o QR Code no local.'}
                 </Text>
               </VStack>
 
-              <QRCodeButton equipmentId={equipment._id || equipment.id} equipmentName={equipment.name} />
+              <QRCodeButton
+                equipmentId={equipment._id || equipment.id}
+                equipmentName={equipment.name}
+                disabled={!isAdmin}
+              />
 
-              <Pressable
-                onPress={() => router.push(`/equipment-maintenance?id=${equipment._id || equipment.id}`)}
-                className="rounded-2xl overflow-hidden"
-              >
-                <LinearGradient
-                  colors={HEADER_GRADIENT_COLORS}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={{ paddingVertical: 16, borderRadius: 20 }}
+              {canRegisterMaintenance ? (
+                <Pressable
+                  onPress={() => router.push(`/equipment-maintenance?id=${equipment._id || equipment.id}`)}
+                  className="rounded-2xl overflow-hidden"
                 >
-                  <HStack className="items-center justify-center" space="sm">
-                    <Icon as={SettingsIcon} className="text-white text-xl" style={{ color: '#FFFFFF' }} />
-                    <Text className="text-white font-semibold text-lg">
-                      Registrar manutenção
-                    </Text>
-                  </HStack>
-                </LinearGradient>
-              </Pressable>
+                  <LinearGradient
+                    colors={HEADER_GRADIENT_COLORS}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ paddingVertical: 16, borderRadius: 20 }}
+                  >
+                    <HStack className="items-center justify-center" space="sm">
+                      <Icon as={SettingsIcon} className="text-white text-xl" style={{ color: '#FFFFFF' }} />
+                      <Text className="text-white font-semibold text-lg">
+                        Registrar manutenção
+                      </Text>
+                    </HStack>
+                  </LinearGradient>
+                </Pressable>
+              ) : (
+                <Box className="rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3">
+                  <Text className="text-primary-600 text-sm font-medium">
+                    Este equipamento exige leitura do QR Code no local para registrar manutenções.
+                  </Text>
+                </Box>
+              )}
             </VStack>
           </Box>
         </VStack>

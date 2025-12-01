@@ -408,6 +408,17 @@ const LocationInput: React.FC<LocationInputProps> = ({
   );
 };
 
+type EquipmentFormData = {
+  name: string;
+  installationDate: string;
+  type: string;
+  location: LocationData;
+  status: string;
+  selectedEquipment: string;
+  specificFields: Record<string, string | number>;
+  onlyOnSiteMaintenance: boolean;
+};
+
 const HEADER_GRADIENT_COLORS = ['#005DFF', '#00D26A'] as const;
 
 const statusOptions = [
@@ -455,7 +466,7 @@ export default function RegisterEquipmentScreen() {
   const locationRef = useRef<any>(null);
   const specificFieldsRefs = useRef<{ [key: string]: any }>({});
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<EquipmentFormData>({
     name: '',
     installationDate: '',
     type: '',
@@ -463,6 +474,7 @@ export default function RegisterEquipmentScreen() {
     status: '',
     selectedEquipment: '',
     specificFields: {} as Record<string, string | number>,
+    onlyOnSiteMaintenance: false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -649,14 +661,18 @@ export default function RegisterEquipmentScreen() {
     }
   };
 
-  const updateFormData = (field: string, value: string) => {
-    setFormData(prev => ({
+  const updateFormData = <K extends keyof EquipmentFormData>(
+    field: K,
+    value: EquipmentFormData[K]
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
-      ...(field === 'type' && { selectedEquipment: '', specificFields: {} }),
+      ...(field === 'type' ? { selectedEquipment: '', specificFields: {} } : {}),
     }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    const fieldKey = field as string;
+    if (errors[fieldKey]) {
+      setErrors((prev) => ({ ...prev, [fieldKey]: '' }));
     }
   };
 
@@ -920,6 +936,45 @@ export default function RegisterEquipmentScreen() {
                           <FormControlErrorText>{errors.status}</FormControlErrorText>
                         </FormControlError>
                       )}
+                    </FormControl>
+
+                    <FormControl>
+                      <FormControlLabel>
+                        <FormControlLabelText>Restrição de manutenção</FormControlLabelText>
+                      </FormControlLabel>
+                      <Pressable
+                        onPress={() =>
+                          updateFormData(
+                            'onlyOnSiteMaintenance',
+                            !formData.onlyOnSiteMaintenance
+                          )
+                        }
+                        className={`flex-row items-center justify-between rounded-2xl border px-4 py-3 ${
+                          formData.onlyOnSiteMaintenance
+                            ? 'border-primary-200 bg-primary-50'
+                            : 'border-neutral-200 bg-neutral-50'
+                        }`}
+                      >
+                        <VStack space="xs" className="flex-1 pr-4">
+                          <Text className="text-sm font-semibold text-neutral-900">
+                            Manutenção somente com QR Code
+                          </Text>
+                          <Text className="text-xs text-neutral-500">
+                            Ative para exigir leitura do QR Code antes de registrar manutenções.
+                          </Text>
+                        </VStack>
+                        <Box
+                          className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center ${
+                            formData.onlyOnSiteMaintenance
+                              ? 'border-primary-500 bg-primary-500'
+                              : 'border-neutral-300 bg-white'
+                          }`}
+                        >
+                          {formData.onlyOnSiteMaintenance && (
+                            <Text className="text-white text-xs font-bold">✓</Text>
+                          )}
+                        </Box>
+                      </Pressable>
                     </FormControl>
                   </VStack>
                 </VStack>

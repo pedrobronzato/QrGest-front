@@ -4,8 +4,9 @@ import { Icon, ShareIcon } from '@/components/ui/icon';
 import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
 import React, { useRef, useState } from 'react';
 import { Alert, Dimensions, Modal, StyleSheet, View } from 'react-native';
@@ -15,9 +16,10 @@ import { captureRef } from 'react-native-view-shot';
 interface QRCodeButtonProps {
   equipmentId: string;
   equipmentName: string;
+  disabled?: boolean;
 }
 
-export default function QRCodeButton({ equipmentId, equipmentName }: QRCodeButtonProps) {
+export default function QRCodeButton({ equipmentId, equipmentName, disabled = false }: QRCodeButtonProps) {
   const [showModal, setShowModal] = useState(false);
   const qrRef = useRef<View>(null);
   const [qrReady, setQrReady] = useState(false);
@@ -26,7 +28,12 @@ export default function QRCodeButton({ equipmentId, equipmentName }: QRCodeButto
   const BUTTON_GRADIENT_COLORS = ['#005DFF', '#00D26A'] as const;
 
   const generateQRData = () => {
-    const qrData = `exp://192.168.1.113:8081/--/equipment-details?id=${equipmentId}`;
+    const qrData = Linking.createURL('/equipment-details', {
+      queryParams: {
+        id: equipmentId,
+        fromQR: 'true',
+      },
+    });
     console.log('QR Code Data:', qrData);
     return qrData;
   };
@@ -108,8 +115,17 @@ export default function QRCodeButton({ equipmentId, equipmentName }: QRCodeButto
     <>
       <VStack className="rounded-2xl mb-4" space="lg">
         <Pressable
-          onPress={() => setShowModal(true)}
-          className="rounded-2xl overflow-hidden"
+          onPress={() => {
+            if (!disabled) {
+              setShowModal(true);
+            } else {
+              Alert.alert(
+                'Acesso restrito',
+                'Somente administradores podem gerar ou compartilhar o QR Code deste equipamento.'
+              );
+            }
+          }}
+          className={`rounded-2xl overflow-hidden ${disabled ? 'opacity-60' : ''}`}
         >
           <LinearGradient
             colors={BUTTON_GRADIENT_COLORS}
@@ -119,7 +135,9 @@ export default function QRCodeButton({ equipmentId, equipmentName }: QRCodeButto
           >
             <HStack className="items-center justify-center" space="sm">
               <Icon as={ShareIcon} className="text-white text-xl" style={{ color: '#FFFFFF' }} />
-              <Text className="text-white font-semibold text-lg">Gerar QR Code</Text>
+              <Text className="text-white font-semibold text-lg">
+                {disabled ? 'QR Code restrito' : 'Gerar QR Code'}
+              </Text>
             </HStack>
           </LinearGradient>
         </Pressable>

@@ -26,6 +26,7 @@ export interface UserEquipment {
   installationDate: string;
   selectedEquipment: string;
   assignedAt: string;
+  onlyOnSiteMaintenance?: boolean;
 }
 
 export interface UserProfile {

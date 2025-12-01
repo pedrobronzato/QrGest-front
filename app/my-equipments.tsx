@@ -95,22 +95,6 @@ export default function MyEquipmentsScreen() {
         console.log('👤 Técnico: carregando perfil...');
         await fetchUserProfile(!isOnline);
         setFromCache(!isOnline);
-        setEquipmentsData(userProfile?.equipments ?? []);
-        
-        if (userProfile?.equipments && userProfile.equipments.length > 0) {
-          console.log(`💾 Salvando ${userProfile.equipments.length} equipamentos do técnico no cache...`);
-          const { cacheEquipments } = await import('@/services/offlineStorage');
-          const saved = await cacheEquipments(userProfile.equipments as any);
-          console.log(`💾 Equipamentos do técnico salvos no cache? ${saved ? 'SIM ✅' : 'NÃO ❌'}`);
-          
-          if (saved) {
-            const { getCachedEquipments } = await import('@/services/offlineStorage');
-            const verify = await getCachedEquipments();
-            console.log(`🔍 Verificação: ${verify?.equipments.length || 0} equipamentos em cache`);
-          }
-        } else {
-          console.warn('⚠️ Técnico sem equipamentos atribuídos');
-        }
       }
     } catch (error) {
       console.error('Erro ao carregar equipamentos:', error);
@@ -132,7 +116,32 @@ export default function MyEquipmentsScreen() {
 
   useEffect(() => {
     if (userProfile?.role === 'tecnico') {
-      setEquipmentsData(userProfile?.equipments ?? []);
+      const equipments = userProfile?.equipments ?? [];
+      console.log('equipments', equipments);
+      setEquipmentsData(equipments);
+
+      const syncCache = async () => {
+        if (!equipments.length) {
+          console.warn('⚠️ Técnico sem equipamentos atribuídos');
+          return;
+        }
+
+        try {
+          console.log(`💾 Salvando ${equipments.length} equipamentos do técnico no cache...`);
+          const { cacheEquipments, getCachedEquipments } = await import('@/services/offlineStorage');
+          const saved = await cacheEquipments(equipments as any);
+          console.log(`💾 Equipamentos do técnico salvos no cache? ${saved ? 'SIM ✅' : 'NÃO ❌'}`);
+
+          if (saved) {
+            const verify = await getCachedEquipments();
+            console.log(`🔍 Verificação: ${verify?.equipments.length || 0} equipamentos em cache`);
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ Erro ao sincronizar cache de equipamentos do técnico', cacheError);
+        }
+      };
+
+      syncCache();
     }
   }, [userProfile?.equipments, userProfile?.role]);
 
@@ -241,6 +250,9 @@ export default function MyEquipmentsScreen() {
       : null;
     const statusLabel = statusMeta.label;
     const statusClasses = statusMeta.badgeClasses;
+    console.log('equipment', equipment);
+    console.log('equipment.onlyOnSiteMaintenance', equipment.onlyOnSiteMaintenance);
+    const canRegisterMaintenance = !equipment.onlyOnSiteMaintenance;
     
     return (
       <Box
@@ -298,12 +310,14 @@ export default function MyEquipmentsScreen() {
                 <Icon as={EyeIcon} className="text-blue-600" />
               </Box>
             </Pressable>
-
-            <Pressable onPress={() => handleEditEquipment(item)}>
-              <Box className="p-3 rounded-2xl bg-yellow-100">
-                <Icon as={EditIcon} className="text-yellow-600" />
-              </Box>
-            </Pressable>
+              {console.log('canRegisterMaintenance', canRegisterMaintenance)}
+            {canRegisterMaintenance && (
+              <Pressable onPress={() => handleEditEquipment(item)}>
+                <Box className="p-3 rounded-2xl bg-yellow-100">
+                  <Icon as={EditIcon} className="text-yellow-600" />
+                </Box>
+              </Pressable>
+            )}
 
             {isAdmin && (
               <Pressable onPress={() => handleAssignTechnician(item)}>
@@ -313,9 +327,9 @@ export default function MyEquipmentsScreen() {
               </Pressable>
             )}
 
-              {isAdmin && (
-            <Pressable onPress={() => handleDeleteEquipment(item)}>
-              <Box className="p-3 rounded-2xl bg-red-100">
+            {isAdmin && (
+              <Pressable onPress={() => handleDeleteEquipment(item)}>
+                <Box className="p-3 rounded-2xl bg-red-100">
                   <Icon as={TrashIcon} className="text-red-600" />
                 </Box>
               </Pressable>

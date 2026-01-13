@@ -312,15 +312,6 @@ Contributions are welcome! Please follow these steps:
 3. **Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
 4. **Push** to the branch (`git push origin feature/AmazingFeature`)
 5. **Open** a Pull Request
-
-### Development Guidelines
-
-- Follow TypeScript best practices
-- Write meaningful commit messages
-- Add tests for new features
-- Update documentation as needed
-- Ensure code passes linting checks
-
 ---
 
 ## 📄 License
@@ -335,31 +326,3 @@ This project is part of an academic thesis (TCC) by Pedro Hotz. All rights reser
 
 - GitHub: [@pedrohotz](https://github.com/pedrohotz)
 - LinkedIn: [Pedro Hotz](https://www.linkedin.com/in/pedrohotz)
-
----
-
-## 🙏 Acknowledgments
-
-- Thanks to the Expo team for the amazing development platform
-- Firebase for robust authentication and storage solutions
-- The React Native community for continuous improvements
-- Academic advisors for guidance and support
-
----
-
-## 📞 Support
-
-If you have any questions or need support, please:
-
-- Open an issue on GitHub
-- Contact: [your-email@example.com]
-
----
-
-<div align="center">
-
-**Made with ❤️ using React Native & Expo**
-
-⭐ Star this repository if you find it helpful!
-
-</div>
